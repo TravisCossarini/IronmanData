@@ -61,16 +61,16 @@ def clabs_data_extraction_handler(data_url: str):
             driver.quit()
             return page_values
         except (StaleElementReferenceException, NoSuchElementException) as error:
-            logging.error(f'Retrying page {current_page}, retry count : {error}')
+            logging.error(f'Retrying page {current_page}, retry count {error_count}: {error}')
             time.sleep(5)
             error_count += 1
             if error_count == RETRY_COUNT:
-                logging.error(f'Retried page {error_count} times, raising error')
+                logging.error(f'Retried page {data_url} {error_count} times, raising error')
                 raise
 
 def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data_id: str):
     '''Extracts all data from a clab given page'''
-    DNF_DESIGNATIONS = ['DNS', 'DNF', 'DQ']
+    DNF_DESIGNATIONS = ['DNS', 'DNF', 'DQ', 'Not Classified']
     competitor_data_list = []
     table_rows = driver.find_elements(By.XPATH, '//tbody/tr')
 
@@ -135,7 +135,7 @@ def main():
         logging.info(f'Beginning {row["Race Id"]} for year {row["Year"]} and id {clab_id}')
 
         if clab_id not in existing_files:
-            get_clab_data(clab_id).to_csv(f'Race Data/{clab_id}.csv')
+            get_clab_data(clab_id).to_csv(f'Race Data/{clab_id}.csv', index=False)
 
 if __name__ == '__main__':
     start_time = time.time()
