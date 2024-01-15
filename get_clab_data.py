@@ -126,6 +126,7 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
 def main():
     '''Main function for module'''
     helper.set_logger()
+    logging.info('Beginning extraction of competitor labs data')
     
     clab_data = pd.read_csv('Competitor Labs URLs.csv')
     existing_files = [file[:-4] for file in os.listdir(r'./Race Data') if file.endswith('.csv')]

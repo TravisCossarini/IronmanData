@@ -59,6 +59,7 @@ def get_race_info(race_id: str):
 def get_all_races_info():
     '''Gets the information for all races listed on the Ironman website'''
     helper.set_logger()
+    logging.info('Beginning extraction of race information')
     with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
         races = list(executor.map(get_race_info, get_race_ids()))
 

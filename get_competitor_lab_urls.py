@@ -102,6 +102,7 @@ def compare_race_data(df1: pd.DataFrame, df2: pd.DataFrame):
 def main():
     '''Main function for module'''
     helper.set_logger()
+    logging.info('Beginning extraction of competitor labs urls')
     
     race_ids = pd.read_csv('Race Information.csv')['Race Id'].to_list()
     # Do it twice to make sure that we got them all. There is latency on the website which sometimes causes errors.
