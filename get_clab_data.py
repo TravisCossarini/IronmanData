@@ -127,8 +127,8 @@ def main():
     '''Main function for module'''
     helper.set_logger()
     
-    clab_data = pd.read_csv('Race Data URLs.csv')
-    existing_files = [file[:-4] for file in os.listdir(r'./Race_Data') if file.endswith('.csv')]
+    clab_data = pd.read_csv('Competitor Labs URLs.csv')
+    existing_files = [file[:-4] for file in os.listdir(r'./Race Data') if file.endswith('.csv')]
 
     for _, row in clab_data.iterrows():
         clab_id = row['Competitor Labs ID']

@@ -5,7 +5,7 @@ import concurrent.futures
 import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
-from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException, NoSuchElementException
+from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException, NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 import helper
 
@@ -72,6 +72,7 @@ def fetch_competitor_labs_information(clab_id: str):
     '''Gets the supporting information such as year for each competitor labs url'''
     results_link = f'{COMPETITOR_LAB_LINK}{clab_id}'
     driver = helper.init_web_driver(results_link)
+    logging.info(f'Getting year from clabs for {results_link}')
 
     WebDriverWait(driver, 10).until(
         expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="react-admin-title"]/span/span/span'))
@@ -107,8 +108,13 @@ def main():
     clab_urls_1 = get_all_race_data_urls(race_ids)
     clab_urls_2 = get_all_race_data_urls(race_ids)
 
-    final_data = compare_race_data(clab_urls_1, clab_urls_2)
-    final_data.to_csv('Competitor Labs URLs.csv', index=False)
+    try:
+        final_data = compare_race_data(clab_urls_1, clab_urls_2)
+        final_data.to_csv('Competitor Labs URLs.csv', index=False)
+    except TimeoutException as error:
+        logging.error(f'Error getting year for each URL: {error}')
+        clab_urls_1.to_csv('clab_url_1.csv', index=False)
+        clab_urls_2.to_csv('clab_url_2.csv', index=False)
 
 if __name__ == '__main__':
     start_time = time.time()
