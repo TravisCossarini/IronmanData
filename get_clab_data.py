@@ -85,13 +85,8 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
             )
             no_country_flag = False
         except TimeoutException:
-            logging.warning(f"Found row with no country on row {idx+1} on page {current_page}, timed out")
+            logging.warning(f"Found row with no country on row {idx+1} on page {current_page}")
             no_country_flag = True
-
-        summary_rows = driver.find_elements(By.CLASS_NAME, "detailsButton")
-        for row in summary_rows:
-            time.sleep(0.25)
-            row.click()
 
         designation = driver.find_element(By.XPATH, "//p[text()='Designation']/preceding-sibling::p").text
         dnf_flag = True if designation in DNF_DESIGNATIONS else False
