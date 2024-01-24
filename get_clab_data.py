@@ -6,7 +6,7 @@ import concurrent.futures
 import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
-from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException, TimeoutException, ElementClickInterceptedException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
 import helper
@@ -53,15 +53,16 @@ def clabs_data_extraction_handler(data_url: str):
         expected_conditions.presence_of_element_located((By.TAG_NAME, 'tr'))
     )
 
-    # Retry 
     while not complete_flag:
         try:
             page_values = clabs_extract_data_from_page(driver, current_page, clab_data_id)
             complete_flag = True
             driver.quit()
             return page_values
-        except (StaleElementReferenceException, NoSuchElementException) as error:
+        except (StaleElementReferenceException, NoSuchElementException, ElementClickInterceptedException) as error:
             logging.error(f'Retrying page {current_page}, retry count {error_count}: {error}')
+            # Retry entire page
+            driver.refresh()
             time.sleep(5)
             error_count += 1
             if error_count == RETRY_COUNT:
@@ -78,9 +79,14 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
         logging.info(f'Extracting from row {idx+1} on page {current_page}')
         table_row.click()
         # Wait until country flag has loaded -> implies the rest of the data has loaded as well
-        WebDriverWait(driver, 10).until(
-            expected_conditions.presence_of_element_located((By.XPATH, '//div[contains(@class, "text") and contains(@class, "countryFlag")]/img'))
-        )
+        try:
+            WebDriverWait(driver, 10).until(
+                expected_conditions.presence_of_element_located((By.XPATH, '//div[contains(@class, "text") and contains(@class, "countryFlag")]/img'))
+            )
+            no_country_flag = False
+        except TimeoutException:
+            logging.warning(f'Found row with no country {idx+1} on {current_page}, timed out')
+            no_country_flag = True
 
         summary_rows = driver.find_elements(By.CLASS_NAME, 'detailsButton')
         for row in summary_rows:
@@ -99,7 +105,7 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
             'Overall Rank': driver.find_element(By.XPATH, '//p[text()="Overall Rank"]/preceding-sibling::p').text if not dnf_flag else '',
             'Bib': driver.find_elements(By.XPATH, '//div[contains(@class, "tableRow") and contains(@class, "tableFooter")]/div/div')[0].text,
             'Division': driver.find_elements(By.XPATH, '//div[contains(@class, "tableRow") and contains(@class, "tableFooter")]/div/div')[1].text,
-            'Country': driver.find_element(By.XPATH, '//div[contains(@class, "text") and contains(@class, "countryFlag")]/img').get_attribute('alt'),
+            'Country': driver.find_element(By.XPATH, '//div[contains(@class, "text") and contains(@class, "countryFlag")]/img').get_attribute('alt') if not no_country_flag else '',
             'Points': driver.find_elements(By.XPATH, '//div[contains(@class, "tableRow") and contains(@class, "tableFooter")]/div/div')[3].text,
             'Swim Time': driver.find_elements(By.XPATH, '//div[contains(@id, "swimDetails")]/div/div/div/div')[4].text,
             'Swim Div Rank': driver.find_elements(By.XPATH, '//div[contains(@id, "swimDetails")]/div/div/div/div')[5].text,
@@ -127,7 +133,7 @@ def main():
     '''Main function for module'''
     helper.set_logger()
     logging.info('Beginning extraction of competitor labs data')
-    
+
     clab_data = pd.read_csv('Competitor Labs URLs.csv')
     existing_files = [file[:-4] for file in os.listdir(r'./Race Data') if file.endswith('.csv')]
 
