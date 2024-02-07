@@ -24,8 +24,11 @@ def get_clab_data(clab_data_id: str) -> dict:
     data_url_first_page = f"{COMPETITOR_LAB_LINK}{clab_data_id}{COMPETITOR_LAB_LINK_SUFFIX}1"
     driver = helper.init_web_driver(data_url_first_page)
     time.sleep(2)
-    
-    num_pages = int(driver.find_elements(By.XPATH, "//ul[contains(@class, 'MuiPagination-ul')]/li/button")[-2].text)
+    try:
+        num_pages = int(driver.find_elements(By.XPATH, "//ul[contains(@class, 'MuiPagination-ul')]/li/button")[-2].text)
+    except IndexError:
+        # If there is only one page, handle error
+        num_pages = 1
     driver.quit()
     logging.info(f"Extracing data for {clab_data_id} with {num_pages} pages")
 
@@ -66,8 +69,8 @@ def clabs_data_extraction_handler(data_url: str):
             time.sleep(5)
             error_count += 1
             if error_count == RETRY_COUNT:
-                logging.error(f"Retried page {data_url} {error_count} times, raising error")
-                raise
+                logging.error(f"Retried page {data_url} {error_count} times, raising error: {error}")
+                raise error
 
 def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data_id: str):
     """Extracts all data from a clab given page"""
@@ -75,6 +78,7 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
     competitor_data_list = []
     table_rows = driver.find_elements(By.XPATH, "//tbody/tr")
 
+    start_time = time.time()
     for idx, table_row in enumerate(table_rows):
         logging.info(f"Extracting from row {idx+1} on page {current_page}")
         table_row.click()
@@ -90,6 +94,7 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
 
         summary_rows = driver.find_elements(By.CLASS_NAME, "detailsButton")
         for row in summary_rows:
+            # Wait for row to render
             time.sleep(0.25)
             row.click()
 
@@ -123,10 +128,10 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
             "Transition 2": driver.find_elements(By.XPATH, "//div[contains(@id, 'transitions')]/div/div/div/div")[3].text,
             "Overall Time": driver.find_element(By.XPATH, "//div[contains(@class, 'summaryRow') and contains(@class, 'overallRow')]/p[contains(@class, 'summaryTime')]").text
         }
-        # Close the current row
-        table_row.click()
+
         competitor_data_list.append(competitor_data)
 
+    logging.info(f"Total execution time for race {race_data_id} and page {current_page} is {time.time() - start_time:.2f}")
     return competitor_data_list
 
 def main():
@@ -139,10 +144,12 @@ def main():
 
     for _, row in clab_data.iterrows():
         clab_id = row["Competitor Labs ID"]
-        logging.info(f"Beginning {row['Race Id']} for year {row['Year']} and id {clab_id}")
 
         if clab_id not in existing_files:
+            logging.info(f"Beginning {row['Race Id']} for year {row['Year']} and id {clab_id}")
+            start_time = time.time()
             get_clab_data(clab_id).to_csv(f"Race Data/{clab_id}.csv", index=False)
+            logging.info(f"Total extraction time for race {clab_id} is {time.time() - start_time:.2f}")
 
 if __name__ == "__main__":
     start_time = time.time()

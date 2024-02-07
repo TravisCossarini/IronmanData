@@ -1,4 +1,4 @@
 # IronmanData
 
-TODO
-Fix blank clab urls bug 
+# TODO
+Download and analyze the race tracks
