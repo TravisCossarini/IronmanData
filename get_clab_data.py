@@ -1,4 +1,4 @@
-"""Gets the race data from all competitor labs urls"""
+"""Gets the race data from all competitor labs urls and stores it as html files"""
 import logging
 import time
 import os
@@ -20,7 +20,7 @@ NUM_THREADS = 4
 RETRY_COUNT = 3
 
 def get_clab_data(clab_data_id: str):
-    """Gets the data from all pages for a given clab event, handles threading"""
+    """Gets the data from all pages for a given clab event"""
     data_url_first_page = f"{COMPETITOR_LAB_LINK}{clab_data_id}{COMPETITOR_LAB_LINK_SUFFIX}1"
     driver = helper.init_web_driver(data_url_first_page)
     time.sleep(2)
@@ -29,26 +29,23 @@ def get_clab_data(clab_data_id: str):
     except IndexError:
         # If there is only one page, handle error
         num_pages = 1
-    driver.quit()
     logging.info(f"Extracing data for {clab_data_id} with {num_pages} pages")
 
     data_page_urls = [f"{COMPETITOR_LAB_LINK}{clab_data_id}{COMPETITOR_LAB_LINK_SUFFIX}{page_num}" for page_num in range(1, num_pages+1)]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
-        pages_data_list = list(executor.map(clabs_data_extraction_handler, data_page_urls))
-
     competitor_data_list = []
-    for page_data in pages_data_list:
-        competitor_data_list += page_data
+    for url in data_page_urls:
+        competitor_data_list += clabs_page_data_extraction_handler(driver, url)
 
     save_str_list_to_file(clab_data_id, competitor_data_list)
+    driver.quit()
 
-def clabs_data_extraction_handler(data_url: str) -> list:
+def clabs_page_data_extraction_handler(driver: webdriver, data_url: str) -> list:
     """Function to handle extraction failures and facilitate retries for clab data"""
     current_page = data_url.split("=")[-1]
     clab_data_id = data_url[len(COMPETITOR_LAB_LINK): len(COMPETITOR_LAB_LINK)+36]
     logging.info(f"Extracting data for page {current_page}")
-    driver = helper.init_web_driver(data_url)
+    driver = helper.driver_get_new_page(driver, data_url)
     error_count = 0
     complete_flag = False
 
@@ -64,7 +61,6 @@ def clabs_data_extraction_handler(data_url: str) -> list:
         try:
             page_values = clabs_extract_data_from_page(driver, current_page, clab_data_id)
             complete_flag = True
-            driver.quit()
             return page_values
         except (StaleElementReferenceException, NoSuchElementException, ElementClickInterceptedException) as error:
             if error_count == RETRY_COUNT:
@@ -86,7 +82,7 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
 
     for idx, table_row in enumerate(table_rows):
         table_row.click()
-        # Wait until country flag has loaded -> implies the rest of the data has loaded as well
+        # Wait until data has loaded fully
         try:
             WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, "swimDetails"))
@@ -120,7 +116,7 @@ def main():
     logging.info("Beginning extraction of competitor labs data")
 
     clab_data = pd.read_csv("Competitor Labs URLs.csv")
-    existing_files = [file[:-4] for file in os.listdir(r"./Race Data HTML") if file.endswith(".html")]
+    existing_files = [file[:-5] for file in os.listdir(r"./Race Data HTML") if file.endswith(".html")]
     # Can also add one to check for csv
 
     for _, row in clab_data.iterrows():
@@ -131,6 +127,7 @@ def main():
             start_time_main = time.time()
             get_clab_data(clab_id)
             logging.info(f"Total extraction time for race {clab_id} is {time.time() - start_time_main:.2f}")
+
     return
 
 if __name__ == "__main__":
