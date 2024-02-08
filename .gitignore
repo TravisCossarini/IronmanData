@@ -1,3 +1,4 @@
 *.csv
 Logs/
 *.pyc
+*.html
