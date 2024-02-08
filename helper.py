@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 # Config Variables
 HEADLESS_MODE = False
 
-def init_web_driver(link: str, headless: bool = HEADLESS_MODE):
+def init_web_driver(link: str = "https://www.google.com/", headless: bool = HEADLESS_MODE):
     """Initializes a web driver for a given URL"""
     options = Options()
     if headless:
