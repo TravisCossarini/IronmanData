@@ -52,9 +52,14 @@ def clabs_data_extraction_handler(data_url: str):
     error_count = 0
     complete_flag = False
 
-    WebDriverWait(driver, 10).until(
-        expected_conditions.presence_of_element_located((By.TAG_NAME, "tr"))
-    )
+    try:
+        WebDriverWait(driver, 10).until(
+            expected_conditions.presence_of_element_located((By.TAG_NAME, "tr"))
+        )
+    except TimeoutException:
+        logging.error(f"Data page {current_page}, caused a timeout when waiting for data to load. Skipping race and page")
+        return []
+
 
     while not complete_flag:
         try:
@@ -63,14 +68,15 @@ def clabs_data_extraction_handler(data_url: str):
             driver.quit()
             return page_values
         except (StaleElementReferenceException, NoSuchElementException, ElementClickInterceptedException) as error:
+            if error_count == RETRY_COUNT:
+                logging.error(f"Retried page {data_url} {error_count} times, raising error: {error}")
+                raise error
+            
             logging.error(f"Retrying page {current_page}, retry count {error_count}: {error}")
             # Retry entire page
             driver.refresh()
             time.sleep(5)
             error_count += 1
-            if error_count == RETRY_COUNT:
-                logging.error(f"Retried page {data_url} {error_count} times, raising error: {error}")
-                raise error
 
 def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data_id: str):
     """Extracts all data from a clab given page"""
@@ -93,41 +99,37 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
             no_country_flag = True
 
         summary_rows = driver.find_elements(By.CLASS_NAME, "detailsButton")
-        for row in summary_rows:
-            # Wait for row to render
-            time.sleep(0.25)
-            row.click()
 
         designation = driver.find_element(By.XPATH, "//p[text()='Designation']/preceding-sibling::p").text
         dnf_flag = True if designation in DNF_DESIGNATIONS else False
 
-        competitor_data = {
-            "data_source_id": race_data_id,
-            "Name": table_row.find_elements(By.TAG_NAME, "span")[1].text,
-            "Designation": designation,
-            "Div Rank" : driver.find_element(By.XPATH, "//p[text()='Div Rank']/preceding-sibling::p").text if not dnf_flag else "",
-            "Gender Rank": driver.find_element(By.XPATH, "//p[text()='Gender Rank']/preceding-sibling::p").text if not dnf_flag else "",
-            "Overall Rank": driver.find_element(By.XPATH, "//p[text()='Overall Rank']/preceding-sibling::p").text if not dnf_flag else "",
-            "Bib": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[0].text,
-            "Division": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[1].text,
-            "Country": driver.find_element(By.XPATH, "//div[contains(@class, 'text') and contains(@class, 'countryFlag')]/img").get_attribute("alt") if not no_country_flag else "",
-            "Points": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[3].text,
-            "Swim Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[4].text,
-            "Swim Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[5].text,
-            "Swim Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[6].text,
-            "Swim Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[7].text,
-            "Bike Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[4].text,
-            "Bike Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[5].text,
-            "Bike Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[6].text,
-            "Bike Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[7].text,
-            "Run Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[4].text,
-            "Run Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[5].text,
-            "Run Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[6].text,
-            "Run Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[7].text,
-            "Transition 1": driver.find_elements(By.XPATH, "//div[contains(@id, 'transitions')]/div/div/div/div")[2].text,
-            "Transition 2": driver.find_elements(By.XPATH, "//div[contains(@id, 'transitions')]/div/div/div/div")[3].text,
-            "Overall Time": driver.find_element(By.XPATH, "//div[contains(@class, 'summaryRow') and contains(@class, 'overallRow')]/p[contains(@class, 'summaryTime')]").text
-        }
+    competitor_data = {
+        "data_source_id": race_data_id,
+        "Name": table_row.find_elements(By.TAG_NAME, "span")[1].text,
+        "Designation": designation,
+        "Div Rank" : driver.find_element(By.XPATH, "//p[text()='Div Rank']/preceding-sibling::p").text if not dnf_flag else "",
+        "Gender Rank": driver.find_element(By.XPATH, "//p[text()='Gender Rank']/preceding-sibling::p").text if not dnf_flag else "",
+        "Overall Rank": driver.find_element(By.XPATH, "//p[text()='Overall Rank']/preceding-sibling::p").text if not dnf_flag else "",
+        "Bib": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[0].text,
+        "Division": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[1].text,
+        "Country": driver.find_element(By.XPATH, "//div[contains(@class, 'text') and contains(@class, 'countryFlag')]/img").get_attribute("alt") if not no_country_flag else "",
+        "Points": driver.find_elements(By.XPATH, "//div[contains(@class, 'tableRow') and contains(@class, 'tableFooter')]/div/div")[3].get_attribute("innerHTML"),
+        "Swim Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[4].get_attribute("innerHTML"),
+        "Swim Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[5].get_attribute("innerHTML"),
+        "Swim Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[6].get_attribute("innerHTML"),
+        "Swim Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'swimDetails')]/div/div/div/div")[7].get_attribute("innerHTML"),
+        "Bike Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[4].get_attribute("innerHTML"),
+        "Bike Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[5].get_attribute("innerHTML"),
+        "Bike Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[6].get_attribute("innerHTML"),
+        "Bike Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'bikeDetails')]/div/div/div/div")[7].get_attribute("innerHTML"),
+        "Run Time": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[4].get_attribute("innerHTML"),
+        "Run Div Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[5].get_attribute("innerHTML"),
+        "Run Gender Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[6].get_attribute("innerHTML"),
+        "Run Overall Rank": driver.find_elements(By.XPATH, "//div[contains(@id, 'runDetails')]/div/div/div/div")[7].get_attribute("innerHTML"),
+        "Transition 1": driver.find_elements(By.XPATH, "//div[contains(@id, 'transitions')]/div/div/div/div")[2].text,
+        "Transition 2": driver.find_elements(By.XPATH, "//div[contains(@id, 'transitions')]/div/div/div/div")[3].text,
+        "Overall Time": driver.find_element(By.XPATH, "//div[contains(@class, 'summaryRow') and contains(@class, 'overallRow')]/p[contains(@class, 'summaryTime')]").text
+    }
 
         competitor_data_list.append(competitor_data)
 
@@ -147,11 +149,10 @@ def main():
 
         if clab_id not in existing_files:
             logging.info(f"Beginning {row['Race Id']} for year {row['Year']} and id {clab_id}")
-            start_time = time.time()
+            start_time_main = time.time()
             get_clab_data(clab_id).to_csv(f"Race Data/{clab_id}.csv", index=False)
-            logging.info(f"Total extraction time for race {clab_id} is {time.time() - start_time:.2f}")
+            logging.info(f"Total extraction time for race {start_time_main} is {time.time() - start_time:.2f}")
+    return
 
 if __name__ == "__main__":
-    start_time = time.time()
     main()
-    logging.info(f"Total Execution time {time.time() - start_time:.2f}")
