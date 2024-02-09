@@ -2,7 +2,6 @@
 import logging
 import time
 import os
-import concurrent.futures
 import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -96,6 +95,13 @@ def clabs_extract_data_from_page(driver: webdriver, current_page: int, race_data
         expanded_table_row = driver.find_element(By.CLASS_NAME, "RaDatagrid-expandedPanel")
         row_html = table_row.get_attribute("outerHTML")
         data_html = expanded_table_row.get_attribute("outerHTML")
+
+        # Click the row again to close
+        table_row.click()
+        WebDriverWait(driver, 5).until_not(
+            EC.presence_of_element_located((By.ID, "swimDetails"))
+        )
+
         # Add div for easier parsing
         total_html_row = f"<div class='extraction_dummy'>{row_html}{data_html}</div>"
         competitor_html_list.append(total_html_row)
@@ -112,7 +118,7 @@ def save_str_list_to_file(race_id: str, list_of_str: list):
 
 def main():
     """Main function for module"""
-    helper.set_logger()
+    helper.set_logger("clab_HTML_extraction")
     logging.info("Beginning extraction of competitor labs data")
 
     clab_data = pd.read_csv("Competitor Labs URLs.csv")
