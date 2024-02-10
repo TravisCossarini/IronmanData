@@ -53,10 +53,10 @@ def get_formatted_time():
 def set_logger(title: str = ""):
     """Logger config"""
     if title != "":
-        title += "_"
+        title = f"_{title}"
         
     logging.basicConfig(
-        filename=f"Logs/{title}{get_formatted_time()}.log",
+        filename=f"Logs/{get_formatted_time()}{title}.log",
         encoding="utf-8",
         format="%(asctime)s - %(levelname)s - %(thread)d -  %(funcName)s - %(message)s")
     logger = logging.getLogger()
