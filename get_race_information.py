@@ -1,4 +1,4 @@
-"""Process for getting all race id"s from the Ironman website"""
+"""Process for getting all race id's from the Ironman website"""
 import logging
 import time
 import concurrent.futures
@@ -9,7 +9,7 @@ import helper
 # CONFIG VALUES
 IRONMAN_BASE_LINK = "https://www.ironman.com"
 IRONMAN_RACES_LINK = f"{IRONMAN_BASE_LINK}/races"
-NUM_THREADS = 4
+NUM_THREADS = 1
 
 def get_race_ids():
     """Gets all race ids from the Ironman website"""

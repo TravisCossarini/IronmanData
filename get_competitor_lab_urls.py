@@ -23,6 +23,13 @@ def get_competitor_labs_urls(race_id: str):
     results_link = f"{IRONMAN_BASE_LINK}/{race_id}-results"
 
     driver = helper.init_web_driver(results_link)
+    # Wait for cookies form to load
+    time.sleep(5)
+    try:
+        driver.find_element(By.ID, "onetrust-reject-all-handler").click()
+    except NoSuchElementException as error:
+        logging.warning(f"No cookies found on {race_id} --- {error}")
+
 
     race_competitor_labs_urls = []
     current_year_url_ids = set()

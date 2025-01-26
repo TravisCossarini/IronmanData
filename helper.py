@@ -8,9 +8,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from pathlib import Path
+import sys
 
 # Config Variables
-HEADLESS_MODE = True
+HEADLESS_MODE = False
 
 def init_web_driver(link: str = "https://www.google.com/", headless: bool = HEADLESS_MODE):
     """Initializes a web driver for a given URL"""
@@ -56,8 +58,9 @@ def set_logger(title: str = ""):
         title = f"_{title}"
         
     logging.basicConfig(
-        filename=f"Logs/{get_formatted_time()}{title}.log",
+        filename=f"{Path.home()}/Code/IronmanData/Logs/{get_formatted_time()}{title}.log",
         encoding="utf-8",
-        format="%(asctime)s - %(levelname)s - %(thread)d -  %(funcName)s - %(message)s")
+        format="%(asctime)s - %(levelname)s - %(thread)d -  %(funcName)s - %(message)s",
+    )
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
