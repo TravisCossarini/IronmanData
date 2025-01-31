@@ -3,57 +3,78 @@ import logging
 import time
 import concurrent.futures
 import pandas as pd
-from selenium.webdriver.common.by import By
 import helper
+import re
+from bs4 import BeautifulSoup
 
 # CONFIG VALUES
-IRONMAN_BASE_LINK = "https://www.ironman.com"
-IRONMAN_RACES_LINK = f"{IRONMAN_BASE_LINK}/races"
 NUM_THREADS = 1
 
 def get_race_ids():
     """Gets all race ids from the Ironman website"""
     logging.info("Getting race ids")
-    driver = helper.init_web_driver(IRONMAN_RACES_LINK)
-    race_ids = []
+    race_ids = set()
 
-    next_page_button_css = ".nextPageButton:not(.hidden)"
-    next_page_button = driver.find_element(By.CSS_SELECTOR, next_page_button_css)
-    page_count = 1
-
-    # While there is a next page button visible
-    while next_page_button:
-        logging.info(f"Scraping page {page_count}")
-        race_ids += [link.get_attribute("href").split("/")[-1] for link in driver.find_elements(By.LINK_TEXT, "See Race Details")]
-
-        # Check to see if this is the last page
-        if "hidden" in next_page_button.get_attribute("class"):
-            logging.info(f"Found last page, ending execution")
+    # Find all links to races
+    regex = r'https://www\.ironman\.com/races/[^"]*'
+    # Range is just a limited while loop, will break once no more data returned
+    for page_num in range(0, 100):
+        start_time = time.time()
+        response = helper.make_request(url=f"{helper.IRONMAN_RACES_LINK}?page={page_num}", headers=helper.IRONMAN_REQUEST_HEADER)
+        response_body = response.text
+        matches = re.findall(regex, response_body)
+        if(len(matches) < 1):
             break
-        else:
-            driver.execute_script("arguments[0].click();", next_page_button)
-            page_count += 1
+        race_ids.update(matches)
+        logging.info(f"Completed page {page_num} with {len(matches)} races in {round(time.time() - start_time, 2)} seconds")
 
-    logging.info(f"Retrieved {len(race_ids)} race ids")
-    driver.quit()
-    return race_ids
+    # Cut off URL from ID
+    return [url.split("/")[-1] for url in race_ids]
+
+def get_clab_event_id(race_id: str):
+    """Gets the competitor lab ID for a given race"""
+    logging.info(f"Getting competitor lab id for {race_id}")
+    results_response = helper.make_request(url=f"{helper.IRONMAN_RACES_LINK}/{race_id}/results", headers=helper.IRONMAN_REQUEST_HEADER)
+    results_html = BeautifulSoup(results_response.text, "html.parser")
+    competitor_lab_id = results_html.find("iframe").get("src").split("/")[-1]
+    return competitor_lab_id
 
 def get_race_info(race_id: str):
     """Gets all race information for a given race id"""
     logging.info(f"Getting race info for {race_id}")
-    race_link = f"{IRONMAN_BASE_LINK}/{race_id}"
-    race_html = helper.get_page_source(race_link)
+    race_link = f"{helper.IRONMAN_RACES_LINK}/{race_id}"
+    race_html = helper.make_request(url=race_link, headers=helper.IRONMAN_REQUEST_HEADER)
+    race_html = BeautifulSoup(race_html.text, "html.parser")
 
-    race_object = {
-        "Race Id": race_id,
-        "Title": race_html.find("h1").text,
-        "Swim Type": race_html.find("div", class_="swim-type").text[5:-1],
-        "Bike Type": race_html.find("div", class_="bike-type").text[5:-1],
-        "Run Type": race_html.find("div", class_="run-type").text[4:-1],
-        "Avg Air Temp": race_html.find("div", class_="airTemp").text.split("Temp")[-1][:-1],
-        "Avg Water Temp": race_html.find("div", class_="waterTemp").text.split("Temp")[-1][:-1],
-        "Airport": race_html.find("div", class_="airport").text[8:-1]
-    }
+    try:
+        race_object = {
+            "Race Id": race_id,
+            "Title": race_html.find("h1").text.strip(),
+            "Swim Type": race_html.find("div", string="Swim").find_next_sibling().findChildren("span")[0].text,
+            "Bike Type": race_html.find("div", string="Bike").find_next_sibling().findChildren("span")[0].text,
+            "Run Type": race_html.find("div", string="Run").find_next_sibling().findChildren("span")[0].text,
+            "High Air Temp": race_html.find("div", string="High Air Temp").find_next_sibling().findChildren("span")[0].text,
+            "Low Air Temp": race_html.find("div", string="Low Air Temp").find_next_sibling().findChildren("span")[0].text,
+            "Avg Water Temp": race_html.find("div", string="Avg. Water Temp").find_next_sibling().findChildren("span")[0].text,
+            "Location": race_html.find("div", {"class", "country-flag-formatter"}).findChildren("span")[0].text,
+            "Logo Image URL": f'{helper.IRONMAN_BASE_LINK}/{race_html.find("div", {"class", "race-logo"}).findChild("img").get("src")}',
+            "Flag Image URL": f'{helper.IRONMAN_BASE_LINK}/{race_html.find("div", {"class", "country-flag-formatter"}).findChild("img").get("src")}',
+            "Competitor Lab Id": get_clab_event_id(race_id)
+        }
+    except AttributeError as e:
+        race_object = {
+            "Race Id": race_id,
+            "Title": "",
+            "Swim Type": "",
+            "Bike Type": "",
+            "Run Type": "",
+            "High Air Temp": "",
+            "Low Air Temp": "",
+            "Avg Water Temp": "",
+            "Location": "",
+            "Logo Image URL": "",
+            "Flag Image URL": ""
+        }
     return race_object
 
 def get_all_races_info():
@@ -68,4 +89,4 @@ def get_all_races_info():
 if __name__ == "__main__":
     start_time = time.time()
     get_all_races_info()
-    logging.info(f"Total Execution time {time.time() - start_time:.2f}")
+    logging.info(f"Total execution time {time.time() - start_time:.2f}")
