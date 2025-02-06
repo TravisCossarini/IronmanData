@@ -1,16 +1,8 @@
 """Helper functions for scraping"""
-import time
 import logging
 from datetime import datetime
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 from pathlib import Path
 import requests
-import sys
 
 # Config Variables
 HEADLESS_MODE = False
@@ -31,13 +23,9 @@ IRONMAN_REQUEST_HEADER = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 }
 
-def get_formatted_time():
-    """Returns formatted time for logging purposes"""
-    current_time = datetime.now()
-    formatted_time = current_time.strftime('%m_%d_%Y_%H_%M')
-    return formatted_time
 
 def make_request(url, method='GET', headers=None, data=None, params=None):
+   """Makes request to endpoint and returns result"""
    response = requests.request(
        method=method,
        url=url,
@@ -46,6 +34,12 @@ def make_request(url, method='GET', headers=None, data=None, params=None):
        params=params
    )
    return response
+
+def get_formatted_time():
+    """Returns formatted time for logging purposes"""
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('%m_%d_%Y_%H_%M')
+    return formatted_time
 
 def set_logger(title: str = "", output_file: bool = True, output_console: bool = True):
     """Logger config"""
