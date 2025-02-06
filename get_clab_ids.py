@@ -1,4 +1,4 @@
-"""Gets all Competitor Lab data urls and their related information as well as some basic validation"""
+"""Gets all Competitor Lab data ids and their related information as well as some basic validation"""
 import logging
 import time
 import concurrent.futures
@@ -67,9 +67,9 @@ def main():
     logging.info("Beginning extraction of competitor labs urls")
     
     race_data = pd.read_csv("Race Information.csv")
-    # Do it twice to make sure that we got them all. There is latency on the website which sometimes causes errors.
+
     clab_subevents = get_all_clab_subevents(race_data)
-    clab_subevents.to_csv("Competitor Labs URLs.csv", index=False)
+    clab_subevents.to_csv("Competitor Labs Subevents.csv", index=False)
 
 if __name__ == "__main__":
     start_time = time.time()
