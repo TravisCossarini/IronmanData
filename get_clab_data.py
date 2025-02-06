@@ -72,7 +72,7 @@ def get_clab_data(clab_data_id: str):
             }
             competitor_data_list.append(result)
 
-    logging.info(f"Extraced data for {clab_data_id} for {len(competitor_data_list)} participants")
+    logging.info(f"Extracted data for {clab_data_id} for {len(competitor_data_list)} participants")
     return competitor_data_list
 
 def clab_extraction_handler(clab_subevent_id: str):
