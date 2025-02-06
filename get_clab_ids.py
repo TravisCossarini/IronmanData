@@ -1,4 +1,4 @@
-"""Gets all Competitor Lab data ids and their related information as well as some basic validation"""
+"""Gets all Competitor Lab data ids and their related information"""
 import logging
 import time
 import concurrent.futures
@@ -59,6 +59,7 @@ def get_all_clab_subevents(race_data: pd.DataFrame):
 
     for subevents in result_subevents:
         clab_subevents += subevents
+
     return pd.DataFrame(clab_subevents).drop_duplicates()
 
 def main():

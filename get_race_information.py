@@ -11,13 +11,13 @@ from bs4 import BeautifulSoup
 NUM_THREADS = 1
 
 def get_race_ids():
-    """Gets all race ids from the Ironman website"""
+    """Gets all race ids from the races page of the Ironman website"""
     logging.info("Getting race ids")
     race_ids = set()
 
     # Find all links to races
     regex = r'https://www\.ironman\.com/races/[^"]*'
-    # Range is just a limited while loop, will break once no more data returned
+    # Range is just a limited do while loop, will break once no more data is returned
     for page_num in range(0, 100):
         start_time = time.time()
         response = helper.make_request(url=f"{helper.IRONMAN_RACES_LINK}?page={page_num}", headers=helper.IRONMAN_REQUEST_HEADER)
@@ -32,8 +32,8 @@ def get_race_ids():
     return [url.split("/")[-1] for url in race_ids]
 
 def get_clab_event_id(race_id: str):
-    """Gets the competitor lab ID for a given race"""
-    logging.info(f"Getting competitor lab id for {race_id}")
+    """Gets the competitor lab event ID for a given race"""
+    logging.info(f"Getting competitor lab event id for {race_id}")
     results_response = helper.make_request(url=f"{helper.IRONMAN_RACES_LINK}/{race_id}/results", headers=helper.IRONMAN_REQUEST_HEADER)
     results_html = BeautifulSoup(results_response.text, "html.parser")
     competitor_lab_id = results_html.find("iframe").get("src").split("/")[-1]
