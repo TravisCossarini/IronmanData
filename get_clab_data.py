@@ -29,7 +29,7 @@ def get_clab_data(clab_data_id: str):
         logging.error(subevent_data, subevent_data.text)
         raise e
     
-    logging.info(f"Extracing data for {clab_data_id} with {total_participants} participants")
+    logging.info(f"Extracting data for {clab_data_id} with {total_participants} participants")
     
     competitor_data_list = []
 
