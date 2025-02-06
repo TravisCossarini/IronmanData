@@ -4,4 +4,4 @@ Logs/
 *.html
 *.log
 Scratch.ipynb
-chromedriver
+.DS_Store
